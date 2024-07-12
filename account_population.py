@@ -126,18 +126,21 @@ def get_imap_server(email_address):
     domain = email_address.split('@')[-1]
     return f"imap.{domain}"
 
-def find_email_and_password(username):
-    with open('emails.txt', 'r') as file:
-        lines = file.readlines()
+def find_email_and_password(username, file_path='Batch5.xlsx'):
+    df = pd.read_excel(file_path)
+    if 'Username' not in df.columns or 'Linked_Email' not in df.columns or 'Linked_Email_Password' not in df.columns:
+        raise ValueError("The Excel file must contain 'Username', 'Linked_Email', and 'Linked_Email_Password' columns.")
+    user_row = df[df['Username'] == username]
     
-    for line in lines:
-        line = line.strip()
-        parts = line.split(':')
-        if len(parts) == 3:
-            user, email_address, email_password = parts
-            if user == username:
-                return email_address, email_password
+    if not user_row.empty:
+        email_address = user_row['Linked_Email'].values[0]
+        email_password = user_row['Linked_Email_Password'].values[0]
+        return email_address, email_password
+    else:
+        return None
     return None, None
+
+
 def get_code_from_email(username):
     challenge_email,challenge_email_pass = find_email_and_password(username)
     imap_server = get_imap_server(challenge_email)
@@ -189,7 +192,7 @@ def convert_webp_to_jpg(webp_path):
 
 
 
-def post_content_to_user_profile(user_name,password,new_password,new_user_name, new_full_name,target):
+def post_content_to_user_profile(user_name,password,new_password,new_user_name, new_full_name,target,challenge_email,challenge_email_pass):
     content = get_user_profile_info(target)
     if not content:
         print(f"Scanning user went unsuccessfull for {user_name}!")
@@ -211,8 +214,6 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
         cl = Client()
         random_proxy = generate_unused_proxy(used_proxies)
         if random_proxy:
-            if user_name == 'annelano47':
-                random_proxy = '42f0ee2c5907656693ee:b5f203e0222b9ac9@gw.dataimpulse.com:18131'
             cl.set_proxy(random_proxy)
         elif not random_proxy:
             print(f"Aborting account population operations for {user_name}, detail : Proxy not generated!")
@@ -329,6 +330,8 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
             user_data_dict["settings"] = cl.get_settings()
             user_data_dict["target"] = target
             user_data_dict["posted_media"] = posted_media
+            user_data_dict["challenge_email"] = challenge_email
+            user_data_dict["challenge_email_passowrd"] = challenge_email_password
         else:
             print("can't login using : {user_name}!")
             print("==================================================================================")
@@ -464,5 +467,7 @@ for user in users:
     target = user[3].strip()
     new_username = user[4].strip()
     new_fullname = user[5].strip()
-    post_content_to_user_profile(user_name,password,new_password,new_username,new_fullname,target)
+    challenge_email = user[6].strip()
+    challenge_email_password = user[7].strip()
+    post_content_to_user_profile(user_name,password,new_password,new_username,new_fullname,target,challenge_email,challenge_email_password)
 
