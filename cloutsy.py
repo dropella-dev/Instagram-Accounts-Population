@@ -1,4 +1,5 @@
 import requests
+import random
 def initiate_order(profile):
     try:
         url = "https://cloutsy.com/api/v2"
@@ -9,8 +10,7 @@ def initiate_order(profile):
         querystring['action'] = action
         querystring['link'] = profile
         querystring['service'] = "62"
-        querystring['min'] = "100"
-        querystring['max'] = "350"
+        querystring['quantity'] = f"{random.randrange(100,350)}"
         payload = ""
         response = requests.request("POST", url, data=payload, params=querystring)
         if response.status_code == 200 and 'order' in response.json():

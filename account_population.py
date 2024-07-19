@@ -35,16 +35,19 @@ def generate_unused_proxy(used_proxies, max_attempts=100):
 def scan_user(user_name):
     url = "https://scrappygram.p.rapidapi.com/api/insta/andr/userinfov1"
     headers = {
-        "x-rapidapi-key": "f2c30434bbmsh8c1a4392731f17ep119b93jsn79863bf924bf",
+        "x-rapidapi-key": "2f5b0dee51msh47a4e9364d8b93fp13c2b6jsn52cfc6d849dc",
         "x-rapidapi-host": "scrappygram.p.rapidapi.com"
     }
     try:
         response = dict()
         for _ in range(25):
             querystring = {"username": f"{user_name}", "proxy": f"{random.choice(proxies0)}"}
-            response = requests.get(url, headers=headers, params=querystring)
-            if response.status_code == 200 and response.json()['biography']:
-                break
+            try:
+                response = requests.get(url, headers=headers, params=querystring)
+                if response.status_code == 200 and response.json()['biography']:
+                    break
+            except:
+                pass
             time.sleep(1)
         bio = response.json()['biography']
         name = response.json()['full_name']
@@ -60,16 +63,19 @@ def scan_user(user_name):
 def fetch_posts(user_name):
     url = "https://scrappygram.p.rapidapi.com/api/insta/andr/allpostscrapper"
     headers = {
-        "X-RapidAPI-Key": "f2c30434bbmsh8c1a4392731f17ep119b93jsn79863bf924bf",
+        "X-RapidAPI-Key": "2f5b0dee51msh47a4e9364d8b93fp13c2b6jsn52cfc6d849dc",
         "X-RapidAPI-Host": "scrappygram.p.rapidapi.com"
     }
     try:
         response = dict()
         for _ in range(25):
             querystring = {"username": f"{user_name}", "proxy": f"{random.choice(proxies0)}"}
-            response = requests.get(url, headers=headers, params=querystring)
-            if response.status_code == 200 and response.json()['data']['user']['edge_owner_to_timeline_media']:
-                break
+            try:
+                response = requests.get(url, headers=headers, params=querystring)
+                if response.status_code == 200 and response.json()['data']['user']['edge_owner_to_timeline_media']:
+                    break
+            except:
+                pass
         posts_raw_data = dict()
         num_of_posts = random.randint(2, 20)
         available_posts = len(response.json()['data']['user']['edge_owner_to_timeline_media']['edges'])
@@ -114,10 +120,8 @@ def get_user_profile_info(user_name):
 
 def challenge_code_handler(username, choice):
     if choice == ChallengeChoice.SMS:
-        print("SMS challenge detected")
         pass
     elif choice == ChallengeChoice.EMAIL:
-        print("Email challenge detected")
         return get_code_from_email(username)
     return False
 
@@ -142,6 +146,7 @@ def find_email_and_password(username, file_path='Batch5.xlsx'):
 
 
 def get_code_from_email(username):
+    time.sleep(60)
     challenge_email,challenge_email_pass = find_email_and_password(username)
     imap_server = get_imap_server(challenge_email)
     mail = imaplib.IMAP4_SSL(imap_server)
@@ -192,7 +197,7 @@ def convert_webp_to_jpg(webp_path):
 
 
 
-def post_content_to_user_profile(user_name,password,new_password,new_user_name, new_full_name,target,challenge_email,challenge_email_pass):
+def post_content_to_user_profile(user_name,password,new_password,new_user_name, new_full_name,target,challenge_email,challenge_email_password):
     content = get_user_profile_info(target)
     if not content:
         print(f"Scanning user went unsuccessfull for {user_name}!")
@@ -217,6 +222,7 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
             cl.set_proxy(random_proxy)
         elif not random_proxy:
             print(f"Aborting account population operations for {user_name}, detail : Proxy not generated!")
+            print("==================================================================================")
             return False
         cl.challenge_code_handler = challenge_code_handler
         is_logged = cl.login(user_name, password)
@@ -237,6 +243,7 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
                 cl.account_edit(biography=content['user_info']['bio'])
             except Exception as e:
                 print(f'profile biography operation failed : {e}')
+                print("==================================================================================")
                 return False
             try:
                 cl.account_edit(username=new_user_name)
@@ -244,6 +251,7 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
             except Exception as e:
                 print(f'username  operation failed: {e}')
                 user_data_dict["user_name"] = user_name
+                print("==================================================================================")
                 return False
             try:
                 cl.account_edit(full_name=new_full_name)
@@ -314,18 +322,18 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
                 try:
                     cl.change_password(password,new_password)
                     user_data_dict["password"] = new_password
-                except:
+                except Exception as e:
                     print(f'password change operation failed : {e}')
                     user_data_dict["password"] = password
             elif password == new_password:
                 user_data_dict["password"] = password
             
             initiate_order(f"https://www.instagram.com/{new_user_name}/")
-            time.sleep(5*60)
-            try:
-                cl.account_set_private()
-            except:
-                print(f'setting account status to private failed : {e}')
+            time.sleep(2*60)
+            # try:
+            #     cl.account_set_private()
+            # except Exception as e:
+            #     print(f'setting account status to private failed : {e}')
             user_data_dict["proxy"] = random_proxy
             user_data_dict["settings"] = cl.get_settings()
             user_data_dict["target"] = target
@@ -333,7 +341,7 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
             user_data_dict["challenge_email"] = challenge_email
             user_data_dict["challenge_email_passowrd"] = challenge_email_password
         else:
-            print("can't login using : {user_name}!")
+            print(f"can't login using : {user_name}!")
             print("==================================================================================")
             return False
         insert_record(connection,dict(user_data_dict))
@@ -452,22 +460,3 @@ def post_media_to_user_profile(user_name):
         json.dump(users_data, f, indent=4)
     print("==================================================================================")
     return True
-
-
-
-
-
-df = pd.read_excel('Batch5.xlsx',skiprows=1, header=None)
-users = df.values.tolist()
-
-for user in users:
-    user_name = user[0].strip()
-    password = user[1].strip()
-    new_password = user[2].strip() 
-    target = user[3].strip()
-    new_username = user[4].strip()
-    new_fullname = user[5].strip()
-    challenge_email = user[6].strip()
-    challenge_email_password = user[7].strip()
-    post_content_to_user_profile(user_name,password,new_password,new_username,new_fullname,target,challenge_email,challenge_email_password)
-

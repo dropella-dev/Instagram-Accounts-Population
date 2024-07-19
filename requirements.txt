@@ -1,0 +1,10 @@
+requests
+instagrapi
+Pillow
+pandas
+openpyxl
+xlrd
+pymongo
+python-multipart
+uvicorn
+fastapi
