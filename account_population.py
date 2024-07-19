@@ -14,6 +14,9 @@ from database_operations import *
 from cloutsy import initiate_order
 proxies0 = ["3a658c2df1e8d954fbe2__cr.so:0cc4c57886851e53@gw.dataimpulse.com:823"]
 
+CHALLENGE_EMAIL = None
+CHALLENGE_EMAIL_PASSWORD = None
+
 
 def generate_unused_proxy(used_proxies, max_attempts=100):
     if not used_proxies:
@@ -130,27 +133,13 @@ def get_imap_server(email_address):
     domain = email_address.split('@')[-1]
     return f"imap.{domain}"
 
-def find_email_and_password(username, file_path='Batch5.xlsx'):
-    df = pd.read_excel(file_path)
-    if 'Username' not in df.columns or 'Linked_Email' not in df.columns or 'Linked_Email_Password' not in df.columns:
-        raise ValueError("The Excel file must contain 'Username', 'Linked_Email', and 'Linked_Email_Password' columns.")
-    user_row = df[df['Username'] == username]
-    
-    if not user_row.empty:
-        email_address = user_row['Linked_Email'].values[0]
-        email_password = user_row['Linked_Email_Password'].values[0]
-        return email_address, email_password
-    else:
-        return None
-    return None, None
-
 
 def get_code_from_email(username):
     time.sleep(60)
-    challenge_email,challenge_email_pass = find_email_and_password(username)
-    imap_server = get_imap_server(challenge_email)
+    global CHALLENGE_EMAIL , CHALLENGE_EMAIL_PASSWORD 
+    imap_server = get_imap_server(CHALLENGE_EMAIL)
     mail = imaplib.IMAP4_SSL(imap_server)
-    mail.login(challenge_email, challenge_email_pass)
+    mail.login(CHALLENGE_EMAIL, CHALLENGE_EMAIL_PASSWORD)
     mail.select("inbox")
     result, data = mail.search(None, "(UNSEEN)")
     assert result == "OK", "Error1 during get_code_from_email: %s" % result
@@ -198,6 +187,9 @@ def convert_webp_to_jpg(webp_path):
 
 
 def post_content_to_user_profile(user_name,password,new_password,new_user_name, new_full_name,target,challenge_email,challenge_email_password):
+    global CHALLENGE_EMAIL , CHALLENGE_EMAIL_PASSWORD 
+    CHALLENGE_EMAIL = challenge_email
+    CHALLENGE_EMAIL_PASSWORD = challenge_email_password
     content = get_user_profile_info(target)
     if not content:
         print(f"Scanning user went unsuccessfull for {user_name}!")
@@ -329,7 +321,7 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
                 user_data_dict["password"] = password
             
             initiate_order(f"https://www.instagram.com/{new_user_name}/")
-            time.sleep(2*60)
+            # time.sleep(2*60)
             # try:
             #     cl.account_set_private()
             # except Exception as e:
@@ -345,6 +337,7 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
             print("==================================================================================")
             return False
         insert_record(connection,dict(user_data_dict))
+        print("==================================================================================")
     except Exception as e:
         print(f"something went wrong with : {user_name} , detail : {e}")
         print("==================================================================================")
