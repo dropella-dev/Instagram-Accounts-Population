@@ -6,5 +6,5 @@ openpyxl
 xlrd
 pymongo
 python-multipart
-uvicorn
 fastapi
+hypercorn

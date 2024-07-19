@@ -3,7 +3,6 @@ from account_population import post_content_to_user_profile
 from fastapi.responses import JSONResponse
 import pandas as pd
 import io
-import uvicorn
 
 app = FastAPI()
 
@@ -37,7 +36,3 @@ async def upload_file(
         challenge_email = user[6].strip()
         challenge_email_password = user[7].strip()
         post_content_to_user_profile(user_name,password,new_password,new_username,new_fullname,target,challenge_email,challenge_email_password)
-
-
-if __name__ == "__main__":
-    uvicorn.run(app)
