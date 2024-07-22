@@ -321,11 +321,12 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
                 user_data_dict["password"] = password
             
             initiate_order(f"https://www.instagram.com/{new_user_name}/")
-            # time.sleep(2*60)
-            # try:
-            #     cl.account_set_private()
-            # except Exception as e:
-            #     print(f'setting account status to private failed : {e}')
+            time.sleep(2*60)
+            try:
+                cl.relogin()
+                cl.account_set_private()
+            except Exception as e:
+                print(f'setting account status to private failed : {e}')
             user_data_dict["proxy"] = random_proxy
             user_data_dict["settings"] = cl.get_settings()
             user_data_dict["target"] = target
