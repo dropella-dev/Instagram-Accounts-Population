@@ -35,90 +35,120 @@ def generate_unused_proxy(used_proxies, max_attempts=100):
     return None
 
 
-def scan_user(user_name):
-    url = "https://scrappygram.p.rapidapi.com/api/insta/andr/userinfov1"
+# def scan_user(user_name):
+#     url = "https://scrappygram.p.rapidapi.com/api/insta/andr/userinfov1"
+#     headers = {
+#         "x-rapidapi-key": "2f5b0dee51msh47a4e9364d8b93fp13c2b6jsn52cfc6d849dc",
+#         "x-rapidapi-host": "scrappygram.p.rapidapi.com"
+#     }
+#     try:
+#         response = dict()
+#         for _ in range(25):
+#             querystring = {"username": f"{user_name}", "proxy": f"{random.choice(proxies0)}"}
+#             try:
+#                 response = requests.get(url, headers=headers, params=querystring)
+#                 if response.status_code == 200 and response.json()['biography']:
+#                     break
+#             except:
+#                 pass
+#             time.sleep(1)
+#         bio = response.json()['biography']
+#         name = response.json()['full_name']
+#         profile_pic = response.json()['profile_pic_url']
+#         if bio or name or profile_pic:
+#             return {'bio': bio, 'name': name, 'profile_pic': profile_pic}
+#         else:
+#             return None
+#     except:
+#         return None
+
+
+# def fetch_posts(user_name):
+#     url = "https://scrappygram.p.rapidapi.com/api/insta/andr/allpostscrapper"
+#     headers = {
+#         "X-RapidAPI-Key": "2f5b0dee51msh47a4e9364d8b93fp13c2b6jsn52cfc6d849dc",
+#         "X-RapidAPI-Host": "scrappygram.p.rapidapi.com"
+#     }
+#     try:
+#         response = dict()
+#         for _ in range(25):
+#             querystring = {"username": f"{user_name}", "proxy": f"{random.choice(proxies0)}"}
+#             try:
+#                 response = requests.get(url, headers=headers, params=querystring)
+#                 if response.status_code == 200 and response.json()['data']['user']['edge_owner_to_timeline_media']:
+#                     break
+#             except:
+#                 pass
+#         posts_raw_data = dict()
+#         num_of_posts = random.randint(2, 20)
+#         available_posts = len(response.json()['data']['user']['edge_owner_to_timeline_media']['edges'])
+#         if num_of_posts > available_posts:
+#             posts_raw_data = response.json()['data']['user']['edge_owner_to_timeline_media']['edges']
+#         else:
+#             posts_raw_data = response.json()['data']['user']['edge_owner_to_timeline_media']['edges'][:num_of_posts]
+#         posts = []
+#         for post in posts_raw_data:
+#             try:
+#                 if post['node']['is_video']:
+#                     media = post['node']['video_url']
+#                     is_video = True
+#                 elif not post['node']['is_video']:
+#                     media = post['node']['display_url']
+#                     is_video = False
+#                 try:
+#                     caption = post['node']['edge_media_to_caption']['edges'][0]['node']['text']
+#                 except:
+#                     caption = ''
+#                 posts.append({
+#                     'media': media,
+#                     'caption': caption,
+#                     'is_video': is_video
+#                 })
+#             except:
+#                 pass
+#         return posts
+
+#     except:
+#         return None
+
+
+def scan_user_and_fetch_posts(user_name):
+    url = "https://instagram-media-api.p.rapidapi.com/user/profile"
+    payload = {
+	"username": f"{user_name}",
+	"proxy": ""
+            }
     headers = {
-        "x-rapidapi-key": "2f5b0dee51msh47a4e9364d8b93fp13c2b6jsn52cfc6d849dc",
-        "x-rapidapi-host": "scrappygram.p.rapidapi.com"
+	"x-rapidapi-key": "2f5b0dee51msh47a4e9364d8b93fp13c2b6jsn52cfc6d849dc",
+	"x-rapidapi-host": "instagram-media-api.p.rapidapi.com",
+	"Content-Type": "application/json"
     }
-    try:
-        response = dict()
-        for _ in range(25):
-            querystring = {"username": f"{user_name}", "proxy": f"{random.choice(proxies0)}"}
-            try:
-                response = requests.get(url, headers=headers, params=querystring)
-                if response.status_code == 200 and response.json()['biography']:
-                    break
-            except:
-                pass
-            time.sleep(1)
-        bio = response.json()['biography']
-        name = response.json()['full_name']
-        profile_pic = response.json()['profile_pic_url']
-        if bio or name or profile_pic:
-            return {'bio': bio, 'name': name, 'profile_pic': profile_pic}
-        else:
-            return None
-    except:
-        return None
+    for _ in range(10):
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            if response.status_code == 200 and response.json()['biography']:
+                bio = response.json()['biography']
+                name = response.json()['full_name']
+                profile_pic = response.json()['profile_pic_url']
+                media_data = random.choice(response.json()['edge_owner_to_timeline_media']['edges'])
+                media = media_data['node']['video_url'] if media_data['node']['is_video'] else media_data['node']['display_url']
+                is_video = media_data['node']['is_video']
+                caption = media_data['node']['edge_media_to_caption']['edges'][0]['node']['text']
+
+                if bio or name or profile_pic:
+                    return [{'bio': bio, 'name': name, 'profile_pic': profile_pic}, {'media':media,'caption':caption,'is_video':is_video}]
+        except:
+            pass
+    return None
 
 
-def fetch_posts(user_name):
-    url = "https://scrappygram.p.rapidapi.com/api/insta/andr/allpostscrapper"
-    headers = {
-        "X-RapidAPI-Key": "2f5b0dee51msh47a4e9364d8b93fp13c2b6jsn52cfc6d849dc",
-        "X-RapidAPI-Host": "scrappygram.p.rapidapi.com"
-    }
-    try:
-        response = dict()
-        for _ in range(25):
-            querystring = {"username": f"{user_name}", "proxy": f"{random.choice(proxies0)}"}
-            try:
-                response = requests.get(url, headers=headers, params=querystring)
-                if response.status_code == 200 and response.json()['data']['user']['edge_owner_to_timeline_media']:
-                    break
-            except:
-                pass
-        posts_raw_data = dict()
-        num_of_posts = random.randint(2, 20)
-        available_posts = len(response.json()['data']['user']['edge_owner_to_timeline_media']['edges'])
-        if num_of_posts > available_posts:
-            posts_raw_data = response.json()['data']['user']['edge_owner_to_timeline_media']['edges']
-        else:
-            posts_raw_data = response.json()['data']['user']['edge_owner_to_timeline_media']['edges'][:num_of_posts]
-        posts = []
-        for post in posts_raw_data:
-            try:
-                if post['node']['is_video']:
-                    media = post['node']['video_url']
-                    is_video = True
-                elif not post['node']['is_video']:
-                    media = post['node']['display_url']
-                    is_video = False
-                try:
-                    caption = post['node']['edge_media_to_caption']['edges'][0]['node']['text']
-                except:
-                    caption = ''
-                posts.append({
-                    'media': media,
-                    'caption': caption,
-                    'is_video': is_video
-                })
-            except:
-                pass
-        return posts
-
-    except:
-        return None
 
 
 def get_user_profile_info(user_name):
-    user_info = scan_user(user_name)
-    user_media = fetch_posts(user_name)
+    user_info,user_media = scan_user_and_fetch_posts(user_name)
     if user_info or  user_media:
         return {'user_info': user_info, 'user_media': user_media}
     return None
-
 
 
 def challenge_code_handler(username, choice):
@@ -347,110 +377,110 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
 
 
 
-def post_media_to_user_profile(user_name):
-    users_data = dict()
-    if os.path.exists("new_instagram_accounts.json"):
-        with open("new_instagram_accounts.json", 'r') as json_file:
-            users_data = json.load(json_file)
-    elif not os.path.exists("new_instagram_accounts.json"):
-        print("users data file not found!")
-        return False
-    user = users_data[user_name]
-    user_name = user['user_name']
-    password = user['password']
-    proxy = user['proxy']
-    settings = user['settings']
-    target = user['target']
-    posted_media = user['posted_media']
-    content = fetch_posts(target)
-    if not content:
-        print(f"Scanning user went unsuccessfull for {user_name}!")
-        print("==================================================================================")
-        return False
-    try:
-        cl = Client(settings)
-        cl.set_proxy(proxy)
-        cl.challenge_code_handler = challenge_code_handler
-        cl.login(user_name,password)
-        if cl.relogin():
-            print(f"logged in using : {user_name}")
-            try:
-                for _ in range(15):
-                    media = random.choice(content)
-                    if media['media'] not in posted_media:
-                        break
-                if media['is_video']:
-                    cl.video_download_by_url(media['media'], f'{user_name}_media_video')
-                    cl.video_upload(f'{user_name}_media_video.mp4',media['caption'])
-                    posted_media.append(media['media'])
-                    if os.path.exists(f'{user_name}_media_video.mp4'):
-                        os.remove(f'{user_name}_media_video.mp4')
-                    if os.path.exists(f'{user_name}_media_video.mp4.jpg'):
-                        os.remove(f'{user_name}_media_video.mp4.jpg')
-                elif not media['is_video']:
-                    cl.photo_download_by_url(media['media'],f'{user_name}_media_pic')
-                    if os.path.exists(f'{user_name}_media_pic.webp'):
-                        img = convert_webp_to_jpg(f'{user_name}_media_pic.webp')
-                    else:
-                        img = f'{user_name}_media_pic.jpg'
-                    cl.photo_upload(img,media['caption'])
-                    posted_media.append(media['media'])
-                    if os.path.exists(img):
-                        os.remove(img)
-            except Exception as e:
-                print(f'profile media operation failed : {e}')
-                if os.path.exists(f'{user_name}_media_video.mp4'):
-                    os.remove(f'{user_name}_media_video.mp4')
-                if os.path.exists(f'{user_name}_media_video.mp4.jpg'):
-                    os.remove(f'{user_name}_media_video.mp4.jpg')
-                if os.path.exists(f'{user_name}_media_pic.webp'):
-                    os.remove(f'{user_name}_media_pic.webp')
-                if os.path.exists(f'{user_name}_media_pic.jpg'):
-                    os.remove(f'{user_name}_media_pic.jpg')
-            try:
-                for _ in range(15):
-                    story = random.choice(content)
-                    if story['media'] not in posted_media:
-                        break
-                if story['is_video']:
-                    cl.video_download_by_url(story['media'], f'{user_name}_story_video')
-                    cl.video_upload_to_story(f'{user_name}_story_video.mp4',story['caption'])
-                    posted_media.append(story['media'])
-                    if os.path.exists(f'{user_name}_story_video.mp4'):
-                        os.remove(f'{user_name}_story_video.mp4')
-                    if os.path.exists(f'{user_name}_story_video.mp4.jpg'):
-                        os.remove(f'{user_name}_story_video.mp4.jpg')
-                elif not story['is_video']:
-                    cl.photo_download_by_url(story['media'],f'{user_name}_story_pic')
-                    if os.path.exists(f'{user_name}_story_pic.webp'):
-                        img = convert_webp_to_jpg(f'{user_name}_story_pic.webp')
-                    else:
-                        img = f'{user_name}_story_pic.jpg'
-                    cl.photo_upload_to_story(img,story['caption'])
-                    posted_media.append(story['media'])
-                    if os.path.exists(img):
-                        os.remove(img)
-            except Exception as e:
-                print(f'profile story operation failed : {e}')
-                if os.path.exists(f'{user_name}_story_video.mp4'):
-                    os.remove(f'{user_name}_story_video.mp4')
-                if os.path.exists(f'{user_name}_story_video.mp4.jpg'):
-                    os.remove(f'{user_name}_story_video.mp4.jpg')
-                if os.path.exists(f'{user_name}_story_pic.webp'):
-                    os.remove(f'{user_name}_story_pic.webp')
-                if os.path.exists(f'{user_name}_story_pic.webp'):
-                    os.remove(f'{user_name}_story_pic.jpg')
-            users_data[user_name]["settings"] = cl.get_settings()
-            users_data[user_name]["posted_media"] = posted_media
-        else:
-            print("can't login using : {user_name}!")
-            print("==================================================================================")
-            return False
-    except Exception as e:
-        print(f"something went wrong with : {user_name} , detail : {e}")
-        print("==================================================================================")
-        return False
-    with open("new_instagram_accounts.json", 'w') as f:
-        json.dump(users_data, f, indent=4)
-    print("==================================================================================")
-    return True
+# def post_media_to_user_profile(user_name):
+#     users_data = dict()
+#     if os.path.exists("new_instagram_accounts.json"):
+#         with open("new_instagram_accounts.json", 'r') as json_file:
+#             users_data = json.load(json_file)
+#     elif not os.path.exists("new_instagram_accounts.json"):
+#         print("users data file not found!")
+#         return False
+#     user = users_data[user_name]
+#     user_name = user['user_name']
+#     password = user['password']
+#     proxy = user['proxy']
+#     settings = user['settings']
+#     target = user['target']
+#     posted_media = user['posted_media']
+#     content = fetch_posts(target)
+#     if not content:
+#         print(f"Scanning user went unsuccessfull for {user_name}!")
+#         print("==================================================================================")
+#         return False
+#     try:
+#         cl = Client(settings)
+#         cl.set_proxy(proxy)
+#         cl.challenge_code_handler = challenge_code_handler
+#         cl.login(user_name,password)
+#         if cl.relogin():
+#             print(f"logged in using : {user_name}")
+#             try:
+#                 for _ in range(15):
+#                     media = random.choice(content)
+#                     if media['media'] not in posted_media:
+#                         break
+#                 if media['is_video']:
+#                     cl.video_download_by_url(media['media'], f'{user_name}_media_video')
+#                     cl.video_upload(f'{user_name}_media_video.mp4',media['caption'])
+#                     posted_media.append(media['media'])
+#                     if os.path.exists(f'{user_name}_media_video.mp4'):
+#                         os.remove(f'{user_name}_media_video.mp4')
+#                     if os.path.exists(f'{user_name}_media_video.mp4.jpg'):
+#                         os.remove(f'{user_name}_media_video.mp4.jpg')
+#                 elif not media['is_video']:
+#                     cl.photo_download_by_url(media['media'],f'{user_name}_media_pic')
+#                     if os.path.exists(f'{user_name}_media_pic.webp'):
+#                         img = convert_webp_to_jpg(f'{user_name}_media_pic.webp')
+#                     else:
+#                         img = f'{user_name}_media_pic.jpg'
+#                     cl.photo_upload(img,media['caption'])
+#                     posted_media.append(media['media'])
+#                     if os.path.exists(img):
+#                         os.remove(img)
+#             except Exception as e:
+#                 print(f'profile media operation failed : {e}')
+#                 if os.path.exists(f'{user_name}_media_video.mp4'):
+#                     os.remove(f'{user_name}_media_video.mp4')
+#                 if os.path.exists(f'{user_name}_media_video.mp4.jpg'):
+#                     os.remove(f'{user_name}_media_video.mp4.jpg')
+#                 if os.path.exists(f'{user_name}_media_pic.webp'):
+#                     os.remove(f'{user_name}_media_pic.webp')
+#                 if os.path.exists(f'{user_name}_media_pic.jpg'):
+#                     os.remove(f'{user_name}_media_pic.jpg')
+#             try:
+#                 for _ in range(15):
+#                     story = random.choice(content)
+#                     if story['media'] not in posted_media:
+#                         break
+#                 if story['is_video']:
+#                     cl.video_download_by_url(story['media'], f'{user_name}_story_video')
+#                     cl.video_upload_to_story(f'{user_name}_story_video.mp4',story['caption'])
+#                     posted_media.append(story['media'])
+#                     if os.path.exists(f'{user_name}_story_video.mp4'):
+#                         os.remove(f'{user_name}_story_video.mp4')
+#                     if os.path.exists(f'{user_name}_story_video.mp4.jpg'):
+#                         os.remove(f'{user_name}_story_video.mp4.jpg')
+#                 elif not story['is_video']:
+#                     cl.photo_download_by_url(story['media'],f'{user_name}_story_pic')
+#                     if os.path.exists(f'{user_name}_story_pic.webp'):
+#                         img = convert_webp_to_jpg(f'{user_name}_story_pic.webp')
+#                     else:
+#                         img = f'{user_name}_story_pic.jpg'
+#                     cl.photo_upload_to_story(img,story['caption'])
+#                     posted_media.append(story['media'])
+#                     if os.path.exists(img):
+#                         os.remove(img)
+#             except Exception as e:
+#                 print(f'profile story operation failed : {e}')
+#                 if os.path.exists(f'{user_name}_story_video.mp4'):
+#                     os.remove(f'{user_name}_story_video.mp4')
+#                 if os.path.exists(f'{user_name}_story_video.mp4.jpg'):
+#                     os.remove(f'{user_name}_story_video.mp4.jpg')
+#                 if os.path.exists(f'{user_name}_story_pic.webp'):
+#                     os.remove(f'{user_name}_story_pic.webp')
+#                 if os.path.exists(f'{user_name}_story_pic.webp'):
+#                     os.remove(f'{user_name}_story_pic.jpg')
+#             users_data[user_name]["settings"] = cl.get_settings()
+#             users_data[user_name]["posted_media"] = posted_media
+#         else:
+#             print("can't login using : {user_name}!")
+#             print("==================================================================================")
+#             return False
+#     except Exception as e:
+#         print(f"something went wrong with : {user_name} , detail : {e}")
+#         print("==================================================================================")
+#         return False
+#     with open("new_instagram_accounts.json", 'w') as f:
+#         json.dump(users_data, f, indent=4)
+#     print("==================================================================================")
+#     return True
