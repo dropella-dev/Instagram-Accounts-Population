@@ -12,10 +12,16 @@ import time
 import pandas as pd
 from database_operations import *
 from cloutsy import initiate_order
+from instagrapi.types import *
+from pydantic import HttpUrl
 proxies0 = ["3a658c2df1e8d954fbe2__cr.so:0cc4c57886851e53@gw.dataimpulse.com:823"]
 
 CHALLENGE_EMAIL = None
 CHALLENGE_EMAIL_PASSWORD = None
+
+
+
+
 
 
 def generate_unused_proxy(used_proxies, max_attempts=100):
@@ -123,7 +129,7 @@ def scan_user_and_fetch_posts(user_name):
 	"x-rapidapi-host": "instagram-media-api.p.rapidapi.com",
 	"Content-Type": "application/json"
     }
-    for _ in range(10):
+    for _ in range(25):
         try:
             response = requests.post(url, json=payload, headers=headers)
             if response.status_code == 200 and response.json()['biography']:
@@ -158,6 +164,8 @@ def challenge_code_handler(username, choice):
         return get_code_from_email(username)
     return False
 
+def change_password_handler(username):
+    return "Waq04239"
 
 def get_imap_server(email_address):
     domain = email_address.split('@')[-1]
@@ -165,8 +173,10 @@ def get_imap_server(email_address):
 
 
 def get_code_from_email(username):
-    time.sleep(60)
     global CHALLENGE_EMAIL , CHALLENGE_EMAIL_PASSWORD 
+    if not CHALLENGE_EMAIL or not CHALLENGE_EMAIL_PASSWORD:
+        return False
+    time.sleep(40)
     imap_server = get_imap_server(CHALLENGE_EMAIL)
     mail = imaplib.IMAP4_SSL(imap_server)
     mail.login(CHALLENGE_EMAIL, CHALLENGE_EMAIL_PASSWORD)
@@ -216,7 +226,7 @@ def convert_webp_to_jpg(webp_path):
 
 
 
-def post_content_to_user_profile(user_name,password,new_password,new_user_name, new_full_name,target,challenge_email,challenge_email_password):
+def post_content_to_user_profile(user_name,password,new_password,new_user_name, new_full_name,target,challenge_email,challenge_email_password,proxy,session_id):
     global CHALLENGE_EMAIL , CHALLENGE_EMAIL_PASSWORD 
     CHALLENGE_EMAIL = challenge_email
     CHALLENGE_EMAIL_PASSWORD = challenge_email_password
@@ -230,7 +240,7 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
     connection = db_connection()
     if connection is not None:
         users_data = get_users_data(connection)
-        used_proxies = get_used_proxies(connection)
+        #used_proxies = get_used_proxies(connection)
     elif connection is None:
         return False
     if user_name in [info['user_name'] for info in users_data] or new_user_name in [info['user_name'] for info in users_data]:
@@ -239,7 +249,7 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
         return False
     try:
         cl = Client()
-        random_proxy = generate_unused_proxy(used_proxies)
+        random_proxy = proxy
         if random_proxy:
             cl.set_proxy(random_proxy)
         elif not random_proxy:
@@ -247,7 +257,16 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
             print("==================================================================================")
             return False
         cl.challenge_code_handler = challenge_code_handler
-        is_logged = cl.login(user_name, password)
+        try:
+            is_logged = cl.login_by_sessionid(session_id)
+        except:
+            try:
+                cl = Client()
+                is_logged = cl.login(user_name,password)
+            except:
+                print(f"can't login using : {user_name}, Account is suspended!")
+                print("==================================================================================")
+                return False
         if is_logged:
             print(f"logged in using : {user_name}")
             user_data_dict = dict()
@@ -265,22 +284,18 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
                 cl.account_edit(biography=content['user_info']['bio'])
             except Exception as e:
                 print(f'profile biography operation failed : {e}')
-                print("==================================================================================")
-                return False
             try:
                 cl.account_edit(username=new_user_name)
                 user_data_dict["user_name"] = new_user_name
             except Exception as e:
                 print(f'username  operation failed: {e}')
                 user_data_dict["user_name"] = user_name
-                print("==================================================================================")
-                return False
             try:
                 cl.account_edit(full_name=new_full_name)
             except Exception as e:
                 print(f'fullname  operation failed: {e}')
             try:
-                media = random.choice(content['user_media'])
+                media = content['user_media']
                 if media['is_video']:
                     cl.video_download_by_url(media['media'], f'{user_name}_media_video')
                     cl.video_upload(f'{user_name}_media_video.mp4',media['caption'])
@@ -311,7 +326,7 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
                 if os.path.exists(f'{user_name}_media_pic.jpg'):
                     os.remove(f'{user_name}_media_pic.jpg')
             try:
-                story = random.choice(content['user_media'])
+                story = content['user_media']
                 if story['is_video']:
                     cl.video_download_by_url(story['media'], f'{user_name}_story_video')
                     cl.video_upload_to_story(f'{user_name}_story_video.mp4',story['caption'])
@@ -353,8 +368,15 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
             initiate_order(f"https://www.instagram.com/{new_user_name}/")
             time.sleep(2*60)
             try:
-                cl.relogin()
-                cl.account_set_private()
+                try:
+                    cl = Client(cl.get_settings())
+                    cl.login(new_user_name,new_password)
+                    cl.relogin()
+                    cl.account_set_private()
+                except:
+                    cl = Client()
+                    cl.login(new_user_name,new_password)
+                    cl.account_set_private()
             except Exception as e:
                 print(f'setting account status to private failed : {e}')
             user_data_dict["proxy"] = random_proxy
@@ -377,6 +399,346 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
 
 
 
+
+def post_content_to_user_profile1(user_name,password,new_password,new_user_name, new_full_name,target,challenge_email,challenge_email_password):
+    global CHALLENGE_EMAIL , CHALLENGE_EMAIL_PASSWORD 
+    CHALLENGE_EMAIL = challenge_email
+    CHALLENGE_EMAIL_PASSWORD = challenge_email_password
+    content = get_user_profile_info(target)
+    if not content:
+        # print(f"Scanning user went unsuccessfull for {user_name}!")
+        # print("==================================================================================")
+        # return False
+        return f"Scanning user went unsuccessfull for {user_name}!"
+    users_data = dict()
+    used_proxies = None
+    connection = db_connection()
+    if connection is not None:
+        users_data = get_users_data(connection)
+        used_proxies = get_used_proxies(connection)
+    elif connection is None:
+        return False
+    if user_name in [info['user_name'] for info in users_data] or new_user_name in [info['user_name'] for info in users_data]:
+        # print(f"Skipping {user_name} , already populated!")
+        # print("==================================================================================")
+        # return False
+        return f"Skipping {user_name} , already populated!"
+    try:
+        cl = Client()
+        random_proxy = generate_unused_proxy(used_proxies)
+        if random_proxy:
+            cl.set_proxy(random_proxy)
+        elif not random_proxy:
+            # print(f"Aborting account population operations for {user_name}, detail : Proxy not generated!")
+            # print("==================================================================================")
+            # return False
+            return f"Aborting account population operations for {user_name}, detail : Proxy not generated!"
+        cl.challenge_code_handler = challenge_code_handler
+        try:
+            is_logged = cl.login(user_name,password)
+        except Exception as e:
+            # print(f"can't login using : {user_name}, {e}!")
+            # print("==================================================================================")
+            # return False
+            return f"can't login using : {user_name}, {e}!"
+        if is_logged:
+            print(f"logged in using : {user_name}")
+            user_data_dict = dict()
+            posted_media = list()
+            try:
+                cl.photo_download_by_url(content['user_info']['profile_pic'],f'{user_name}_profile_pic')
+                cl.account_change_picture(f'{user_name}_profile_pic.jpg')
+                if os.path.exists(f'{user_name}_profile_pic.jpg'):
+                    os.remove(f'{user_name}_profile_pic.jpg')
+            except Exception as e:
+                print(f'profile pic operation failed : {e}')
+                if os.path.exists(f'{user_name}_profile_pic.jpg'):
+                    os.remove(f'{user_name}_profile_pic.jpg')
+            try:
+                cl.account_edit(biography=content['user_info']['bio'])
+            except Exception as e:
+                print(f'profile biography operation failed : {e}')
+            try:
+                cl.account_edit(username=new_user_name)
+                user_data_dict["user_name"] = new_user_name
+            except Exception as e:
+                print(f'username  operation failed: {e}')
+                user_data_dict["user_name"] = user_name
+            try:
+                cl.account_edit(full_name=new_full_name)
+            except Exception as e:
+                print(f'fullname  operation failed: {e}')
+            try:
+                media = content['user_media']
+                if media['is_video']:
+                    cl.video_download_by_url(media['media'], f'{user_name}_media_video')
+                    cl.video_upload(f'{user_name}_media_video.mp4',media['caption'])
+                    posted_media.append( media['media'])
+                    if os.path.exists(f'{user_name}_media_video.mp4'):
+                        os.remove(f'{user_name}_media_video.mp4')
+                    if os.path.exists(f'{user_name}_media_video.mp4.jpg'):
+                        os.remove(f'{user_name}_media_video.mp4.jpg')
+                    
+                elif not media['is_video']:
+                    cl.photo_download_by_url(media['media'],f'{user_name}_media_pic')
+                    if os.path.exists(f'{user_name}_media_pic.webp'):
+                        img = convert_webp_to_jpg(f'{user_name}_media_pic.webp')
+                    else:
+                        img = f'{user_name}_media_pic.jpg'
+                    cl.photo_upload(img,media['caption'])
+                    posted_media.append( media['media'])
+                    if os.path.exists(img):
+                        os.remove(img)
+            except Exception as e:
+                print(f'profile media operation failed : {e}')
+                if os.path.exists(f'{user_name}_media_video.mp4'):
+                    os.remove(f'{user_name}_media_video.mp4')
+                if os.path.exists(f'{user_name}_media_video.mp4.jpg'):
+                    os.remove(f'{user_name}_media_video.mp4.jpg')
+                if os.path.exists(f'{user_name}_media_pic.webp'):
+                    os.remove(f'{user_name}_media_pic.webp')
+                if os.path.exists(f'{user_name}_media_pic.jpg'):
+                    os.remove(f'{user_name}_media_pic.jpg')
+            try:
+                story = content['user_media']
+                if story['is_video']:
+                    cl.video_download_by_url(story['media'], f'{user_name}_story_video')
+                    cl.video_upload_to_story(f'{user_name}_story_video.mp4',story['caption'])
+                    posted_media.append(story['media'])
+                    if os.path.exists(f'{user_name}_story_video.mp4'):
+                        os.remove(f'{user_name}_story_video.mp4')
+                    if os.path.exists(f'{user_name}_story_video.mp4.jpg'):
+                        os.remove(f'{user_name}_story_video.mp4.jpg')
+                elif not story['is_video']:
+                    cl.photo_download_by_url(story['media'],f'{user_name}_story_pic')
+                    if os.path.exists(f'{user_name}_story_pic.webp'):
+                        img = convert_webp_to_jpg(f'{user_name}_story_pic.webp')
+                    else:
+                        img = f'{user_name}_story_pic.jpg'
+                    cl.photo_upload_to_story(img,story['caption'])
+                    posted_media.append(story['media'])
+                    if os.path.exists(img):
+                        os.remove(img)
+            except Exception as e:
+                print(f'profile story operation failed : {e}')
+                if os.path.exists(f'{user_name}_story_video.mp4'):
+                    os.remove(f'{user_name}_story_video.mp4')
+                if os.path.exists(f'{user_name}_story_video.mp4.jpg'):
+                    os.remove(f'{user_name}_story_video.mp4.jpg')
+                if os.path.exists(f'{user_name}_story_pic.webp'):
+                    os.remove(f'{user_name}_story_pic.webp')
+                if os.path.exists(f'{user_name}_story_pic.webp'):
+                    os.remove(f'{user_name}_story_pic.jpg')
+            if password != new_password:
+                try:
+                    cl.change_password(password,new_password)
+                    user_data_dict["password"] = new_password
+                except Exception as e:
+                    print(f'password change operation failed : {e}')
+                    user_data_dict["password"] = password
+            elif password == new_password:
+                user_data_dict["password"] = password
+            
+            initiate_order(f"https://www.instagram.com/{new_user_name}/")
+            time.sleep(2*60)
+            try:
+                try:
+                    cl = Client(cl.get_settings())
+                    cl.login(new_user_name,new_password)
+                    cl.relogin()
+                    cl.account_set_private()
+                except:
+                    cl = Client()
+                    cl.login(new_user_name,new_password)
+                    cl.account_set_private()
+            except Exception as e:
+                print(f'setting account status to private failed : {e}')
+            user_data_dict["proxy"] = random_proxy
+            user_data_dict["settings"] = cl.get_settings()
+            user_data_dict["target"] = target
+            user_data_dict["posted_media"] = posted_media
+            user_data_dict["challenge_email"] = challenge_email
+            user_data_dict["challenge_email_passowrd"] = challenge_email_password
+        else:
+            # print(f"can't login using : {user_name}!")
+            # print("==================================================================================")
+            # return False
+            return f"can't login using : {user_name}!"
+        insert_record(connection,dict(user_data_dict))
+        print("==================================================================================")
+    except Exception as e:
+        # print(f"something went wrong with : {user_name} , detail : {e}")
+        # print("==================================================================================")
+        # return False
+        return f"something went wrong with : {user_name} , detail : {e}"
+    return f"{new_user_name} account populated!"
+
+def post_content_to_user_profile2(user_name,password,new_password,new_user_name, new_full_name,target):
+    global CHALLENGE_EMAIL , CHALLENGE_EMAIL_PASSWORD 
+    CHALLENGE_EMAIL = None
+    CHALLENGE_EMAIL_PASSWORD = None
+    content = get_user_profile_info(target)
+    if not content:
+        print(f"Scanning user went unsuccessfull for {user_name}!")
+        print("==================================================================================")
+        return False
+    users_data = dict()
+    used_proxies = None
+    connection = db_connection()
+    if connection is not None:
+        users_data = get_users_data(connection)
+        used_proxies = get_used_proxies(connection)
+    elif connection is None:
+        return False
+    if user_name in [info['user_name'] for info in users_data] or new_user_name in [info['user_name'] for info in users_data]:
+        print(f"Skipping {user_name} , already populated!")
+        print("==================================================================================")
+        return False
+    try:
+        cl = Client()
+        random_proxy = generate_unused_proxy(used_proxies)
+        if random_proxy:
+            cl.set_proxy(random_proxy)
+        elif not random_proxy:
+            print(f"Aborting account population operations for {user_name}, detail : Proxy not generated!")
+            print("==================================================================================")
+            return False
+        cl.challenge_code_handler = challenge_code_handler
+        try:
+            is_logged = cl.login(user_name,password)
+        except Exception as e:
+            print(f"can't login using : {user_name}, {e}!")
+            print("==================================================================================")
+            return False
+        if is_logged:
+            print(f"logged in using : {user_name}")
+            user_data_dict = dict()
+            posted_media = list()
+            try:
+                cl.photo_download_by_url(content['user_info']['profile_pic'],f'{user_name}_profile_pic')
+                cl.account_change_picture(f'{user_name}_profile_pic.jpg')
+                if os.path.exists(f'{user_name}_profile_pic.jpg'):
+                    os.remove(f'{user_name}_profile_pic.jpg')
+            except Exception as e:
+                print(f'profile pic operation failed : {e}')
+                if os.path.exists(f'{user_name}_profile_pic.jpg'):
+                    os.remove(f'{user_name}_profile_pic.jpg')
+            try:
+                cl.account_edit(biography=content['user_info']['bio'])
+            except Exception as e:
+                print(f'profile biography operation failed : {e}')
+            try:
+                cl.account_edit(username=new_user_name)
+                user_data_dict["user_name"] = new_user_name
+            except Exception as e:
+                print(f'username  operation failed: {e}')
+                user_data_dict["user_name"] = user_name
+            try:
+                cl.account_edit(full_name=new_full_name)
+            except Exception as e:
+                print(f'fullname  operation failed: {e}')
+            try:
+                media = content['user_media']
+                if media['is_video']:
+                    cl.video_download_by_url(media['media'], f'{user_name}_media_video')
+                    cl.video_upload(f'{user_name}_media_video.mp4',media['caption'])
+                    posted_media.append( media['media'])
+                    if os.path.exists(f'{user_name}_media_video.mp4'):
+                        os.remove(f'{user_name}_media_video.mp4')
+                    if os.path.exists(f'{user_name}_media_video.mp4.jpg'):
+                        os.remove(f'{user_name}_media_video.mp4.jpg')
+                    
+                elif not media['is_video']:
+                    cl.photo_download_by_url(media['media'],f'{user_name}_media_pic')
+                    if os.path.exists(f'{user_name}_media_pic.webp'):
+                        img = convert_webp_to_jpg(f'{user_name}_media_pic.webp')
+                    else:
+                        img = f'{user_name}_media_pic.jpg'
+                    cl.photo_upload(img,media['caption'])
+                    posted_media.append( media['media'])
+                    if os.path.exists(img):
+                        os.remove(img)
+            except Exception as e:
+                print(f'profile media operation failed : {e}')
+                if os.path.exists(f'{user_name}_media_video.mp4'):
+                    os.remove(f'{user_name}_media_video.mp4')
+                if os.path.exists(f'{user_name}_media_video.mp4.jpg'):
+                    os.remove(f'{user_name}_media_video.mp4.jpg')
+                if os.path.exists(f'{user_name}_media_pic.webp'):
+                    os.remove(f'{user_name}_media_pic.webp')
+                if os.path.exists(f'{user_name}_media_pic.jpg'):
+                    os.remove(f'{user_name}_media_pic.jpg')
+            try:
+                story = content['user_media']
+                if story['is_video']:
+                    cl.video_download_by_url(story['media'], f'{user_name}_story_video')
+                    cl.video_upload_to_story(f'{user_name}_story_video.mp4',story['caption'])
+                    posted_media.append(story['media'])
+                    if os.path.exists(f'{user_name}_story_video.mp4'):
+                        os.remove(f'{user_name}_story_video.mp4')
+                    if os.path.exists(f'{user_name}_story_video.mp4.jpg'):
+                        os.remove(f'{user_name}_story_video.mp4.jpg')
+                elif not story['is_video']:
+                    cl.photo_download_by_url(story['media'],f'{user_name}_story_pic')
+                    if os.path.exists(f'{user_name}_story_pic.webp'):
+                        img = convert_webp_to_jpg(f'{user_name}_story_pic.webp')
+                    else:
+                        img = f'{user_name}_story_pic.jpg'
+                    cl.photo_upload_to_story(img,story['caption'])
+                    posted_media.append(story['media'])
+                    if os.path.exists(img):
+                        os.remove(img)
+            except Exception as e:
+                print(f'profile story operation failed : {e}')
+                if os.path.exists(f'{user_name}_story_video.mp4'):
+                    os.remove(f'{user_name}_story_video.mp4')
+                if os.path.exists(f'{user_name}_story_video.mp4.jpg'):
+                    os.remove(f'{user_name}_story_video.mp4.jpg')
+                if os.path.exists(f'{user_name}_story_pic.webp'):
+                    os.remove(f'{user_name}_story_pic.webp')
+                if os.path.exists(f'{user_name}_story_pic.webp'):
+                    os.remove(f'{user_name}_story_pic.jpg')
+            if password != new_password:
+                try:
+                    cl.change_password(password,new_password)
+                    user_data_dict["password"] = new_password
+                except Exception as e:
+                    print(f'password change operation failed : {e}')
+                    user_data_dict["password"] = password
+            elif password == new_password:
+                user_data_dict["password"] = password
+            
+            initiate_order(f"https://www.instagram.com/{new_user_name}/")
+            time.sleep(2*60)
+            try:
+                try:
+                    cl = Client(cl.get_settings())
+                    cl.login(new_user_name,new_password)
+                    cl.relogin()
+                    cl.account_set_private()
+                except:
+                    cl = Client()
+                    cl.login(new_user_name,new_password)
+                    cl.account_set_private()
+            except Exception as e:
+                print(f'setting account status to private failed : {e}')
+            user_data_dict["proxy"] = random_proxy
+            user_data_dict["settings"] = cl.get_settings()
+            user_data_dict["target"] = target
+            user_data_dict["posted_media"] = posted_media
+            user_data_dict["challenge_email"] = None
+            user_data_dict["challenge_email_passowrd"] = None
+        else:
+            print(f"can't login using : {user_name}!")
+            print("==================================================================================")
+            return False
+        insert_record(connection,dict(user_data_dict))
+        print("==================================================================================")
+    except Exception as e:
+        print(f"something went wrong with : {user_name} , detail : {e}")
+        print("==================================================================================")
+        return False
+    return True
 # def post_media_to_user_profile(user_name):
 #     users_data = dict()
 #     if os.path.exists("new_instagram_accounts.json"):
@@ -484,3 +846,6 @@ def post_content_to_user_profile(user_name,password,new_password,new_user_name, 
 #         json.dump(users_data, f, indent=4)
 #     print("==================================================================================")
 #     return True
+
+
+
